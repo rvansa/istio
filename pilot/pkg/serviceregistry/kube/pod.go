@@ -81,18 +81,32 @@ func (pc *PodCache) event(obj interface{}, ev model.Event) error {
 			switch pod.Status.Phase {
 			case v1.PodPending, v1.PodRunning:
 				// add to cache if the pod is running or pending
+				_, ipPresent := pc.keys[ip]
 				pc.keys[ip] = key
 				if pc.c != nil && pc.c.XDSUpdater != nil {
-					pc.c.XDSUpdater.WorkloadUpdate(ip, pod.ObjectMeta.Labels, pod.ObjectMeta.Annotations)
+					if ipPresent {
+						pc.c.XDSUpdater.WorkloadUpdate(ip, pod.ObjectMeta.Labels, pod.ObjectMeta.Annotations)
+					} else {
+						// It is possible that pod cache has been queried previously (getPodByIP)
+						// and this was not satisfied; we need to force a config update
+						pc.c.XDSUpdater.ConfigUpdate(true)
+					}
 				}
 			}
 		case model.EventUpdate:
 			switch pod.Status.Phase {
 			case v1.PodPending, v1.PodRunning:
 				// add to cache if the pod is running or pending
+				_, ipPresent := pc.keys[ip]
 				pc.keys[ip] = key
 				if pc.c != nil && pc.c.XDSUpdater != nil {
-					pc.c.XDSUpdater.WorkloadUpdate(ip, pod.ObjectMeta.Labels, pod.ObjectMeta.Annotations)
+					if ipPresent {
+						pc.c.XDSUpdater.WorkloadUpdate(ip, pod.ObjectMeta.Labels, pod.ObjectMeta.Annotations)
+					} else {
+						// It is possible that pod cache has been queried previously (getPodByIP)
+						// and this was not satisfied; we need to force a config update
+						pc.c.XDSUpdater.ConfigUpdate(true)
+					}
 				}
 			default:
 				// delete if the pod switched to other states and is in the cache
